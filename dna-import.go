@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/denisenkom/go-mssqldb"
 )
@@ -49,6 +50,12 @@ func main() {
 	}
 	defer rows.Close()
 
+	f, err := os.Create("episodes.txt")
+	if err != nil {
+		log.Fatal("Cannot create file:", err.Error())
+	}
+	defer f.Close()
+
 	for rows.Next() {
 		var myid int
 		var number sql.NullInt64
@@ -63,7 +70,9 @@ func main() {
 		if err != nil {
 			log.Fatal("Scan failed:", err.Error())
 		}
-		fmt.Printf("my id :%s\n", title)
+		val, _ := title.Value()
+
+		fmt.Printf("my id :%s\n", val)
 
 	}
 
