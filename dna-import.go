@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"os"
 
@@ -57,6 +59,19 @@ func main() {
 	defer f.Close()
 
 	for rows.Next() {
+
+		data := map[string]interface{}{
+			"Id":                nil,
+			"Number":            nil,
+			"Title":             nil,
+			"Description":       nil,
+			"DateRecorded":      nil,
+			"AudioFilePath":     nil,
+			"AudioFileLength":   nil,
+			"NumberOfDownloads": nil,
+			"ZippedFilePath":    nil,
+		}
+
 		var myid int
 		var number sql.NullInt64
 		var title sql.NullString
@@ -70,10 +85,39 @@ func main() {
 		if err != nil {
 			log.Fatal("Scan failed:", err.Error())
 		}
-		val, _ := title.Value()
 
+		data["id"] = myid
+		data["Title"], _ = title.Value()
+		data["Number"], _ = number.Value()
+		data["Description"], _ = description.Value()
+		data["DateRecorded"], _ = dateRecorded.Value()
+		data["AudioFilePath"], _ = audioFilePath.Value()
+		data["AudioFileLength"], _ = audiofilelength.Value()
+		data["NumberOfDownloads"], _ = numberofdownloads.Value()
+		data["ZippedFilePath"], _ = zipped.Value()
+
+		t := template.Must(template.New("episode").Parse(episodeTemplate))
+		buf := &bytes.Buffer{}
+		if err := t.Execute(buf, data); err != nil {
+			log.Fatal("Error executing the template", err.Error())
+		}
+
+		fmt.Print(buf)
+
+		val, _ := data["Title"]
 		fmt.Printf("my id :%s\n", val)
 
 	}
 
 }
+
+const episodeTemplate = `+++
+title = {{.Title}}
+audio_file = {{ .AudioFilePath }}
+date = {{ .Date }}
+audio_length = {{ .AudioFileLength }}
+guests = xxxxx
+number = {{.Number}}
++++
+{{ .Description }}
+`
