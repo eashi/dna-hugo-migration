@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"os"
 
@@ -35,27 +36,19 @@ func main() {
 	}
 
 	conn, err := sql.Open("mssql", connString)
-	if err != nil {
-		log.Fatal("Open connection failed:", err.Error())
-	}
+	panic("Open connection failed:", err)
 	defer conn.Close()
 
 	stmt, err := conn.Prepare("select * from episodes")
-	if err != nil {
-		log.Fatal("Prepare failed:", err.Error())
-	}
+	panic("Prepare failed:", err)
 	defer stmt.Close()
 
 	rows, err := stmt.Query()
-	if err != nil {
-		log.Fatal("Query failed:", err.Error())
-	}
+	panic("Query failed:", err)
 	defer rows.Close()
 
 	f, err := os.Create("episodes.txt")
-	if err != nil {
-		log.Fatal("Cannot create file:", err.Error())
-	}
+	panic("Cannot create file:", err)
 	defer f.Close()
 
 	for rows.Next() {
@@ -98,9 +91,7 @@ func main() {
 
 		t := template.Must(template.New("episode").Parse(episodeTemplate))
 		buf := &bytes.Buffer{}
-		if err := t.Execute(buf, data); err != nil {
-			log.Fatal("Error executing the template", err.Error())
-		}
+		executeOrPanic(t.Execute, buf, data, "Error executing the template")
 
 		fmt.Print(buf)
 
@@ -121,3 +112,16 @@ number = {{.Number}}
 +++
 {{ .Description }}
 `
+
+func panic(message string, err error) {
+	if err != nil {
+		log.Fatal(message, err.Error())
+	}
+}
+
+func executeOrPanic(fn func(io.Writer, interface{}) error, arg1 io.Writer, arg2 interface{}, message string) {
+	err := fn(arg1, arg2)
+	if err != nil {
+		log.Fatal(message, err.Error())
+	}
+}
