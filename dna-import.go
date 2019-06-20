@@ -51,14 +51,14 @@ func main() {
 
 	for rows.Next() {
 		var myid int
-		var number int
-		var title string
-		var description string
-		var dateRecorded string
-		var audioFilePath string
-		var audiofilelength int
+		var number sql.NullInt64
+		var title sql.NullString
+		var description sql.NullString
+		var dateRecorded sql.NullString
+		var audioFilePath sql.NullString
+		var audiofilelength sql.NullInt64
 		var numberofdownloads sql.NullInt64
-		var zipped string
+		var zipped sql.NullString
 		err = rows.Scan(&myid, &number, &title, &description, &dateRecorded, &audioFilePath, &audiofilelength, &numberofdownloads, &zipped)
 		if err != nil {
 			log.Fatal("Scan failed:", err.Error())
