@@ -47,10 +47,6 @@ func main() {
 	panic("Query failed:", err)
 	defer rows.Close()
 
-	f, err := os.Create("episodes.txt")
-	panic("Cannot create file:", err)
-	defer f.Close()
-
 	for rows.Next() {
 
 		data := map[string]interface{}{
@@ -89,15 +85,16 @@ func main() {
 		data["NumberOfDownloads"], _ = numberofdownloads.Value()
 		data["ZippedFilePath"], _ = zipped.Value()
 
+		var f, err = os.Create(fmt.Sprintf("%d.md", data["Number"]))
+		panic("couldn't create the md file", err)
+		defer f.Close()
+
 		t := template.Must(template.New("episode").Parse(episodeTemplate))
 		buf := &bytes.Buffer{}
 		executeOrPanic(t.Execute, buf, data, "Error executing the template")
 
 		fmt.Print(buf)
-
-		val, _ := data["Title"]
-		fmt.Printf("my id :%s\n", val)
-
+		f.WriteString(buf.String())
 	}
 
 }
@@ -105,7 +102,7 @@ func main() {
 const episodeTemplate = `+++
 title = {{.Title}}
 audio_file = {{ .AudioFilePath }}
-date = {{ .Date }}
+date = {{ .DateRecorded }}
 audio_length = {{ .AudioFileLength }}
 guests = xxxxx
 number = {{.Number}}
