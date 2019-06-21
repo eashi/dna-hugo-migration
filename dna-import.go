@@ -3,12 +3,13 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"database/sql/driver"
 	"flag"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"os"
+	"text/template"
 
 	"github.com/jmoiron/sqlx"
 
@@ -54,6 +55,11 @@ func main() {
 		fmt.Printf(" connString:%s\n", connString)
 	}
 
+	funcMap := template.FuncMap{
+		"valueOf": valueOf,
+	}
+	t := template.Must(template.New("episode").Funcs(funcMap).Parse(episodeTemplate))
+
 	for _, thisEpisode := range episodes {
 
 		numberValue, _ := thisEpisode.Number.Value()
@@ -62,7 +68,6 @@ func main() {
 		panic("couldn't create the md file", err)
 		defer f.Close()
 
-		t := template.Must(template.New("episode").Parse(episodeTemplate))
 		buf := &bytes.Buffer{}
 		executeOrPanic(t.Execute, buf, thisEpisode, "Error executing the template")
 
@@ -73,14 +78,14 @@ func main() {
 }
 
 const episodeTemplate = `+++
-title = {{.Title}}
-audio_file = {{ .AudioFilePath }}
-date = {{ .DateRecorded }}
-audio_length = {{ .AudioFileLength }}
+title = {{ valueOf .Title }}
+audio_file = {{ valueOf .AudioFilePath }}
+date = {{ valueOf .DateRecorded }}
+audio_length = {{ valueOf .AudioFileLength }}
 guests = xxxxx
-number = {{.Number}}
+number = {{valueOf .Number}}
 +++
-{{ .Description }}
+{{ valueOf .Description }}
 `
 
 func panic(message string, err error) {
@@ -118,4 +123,12 @@ type Guest struct {
 type EpisodeGuest struct {
 	EpisodeID sql.NullInt64 `db:"EpisodeId"`
 	GuestID   sql.NullInt64 `db:"GuestId"`
+}
+
+func valueOf(arg sqlDbType) (driver.Value, error) {
+	return arg.Value()
+}
+
+type sqlDbType interface {
+	Value() (driver.Value, error)
 }
