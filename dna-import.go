@@ -10,6 +10,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/jmoiron/sqlx"
+
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
@@ -29,69 +31,40 @@ func main() {
 		fmt.Printf(" server:%s\n", *server)
 		fmt.Printf(" user:%s\n", *user)
 	}
-
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d", *server, *user, *password, *port)
+
+	db, err := sqlx.Connect("mssql", connString)
+	panic("no!", err)
+
+	episodes := []Episode{}
+	err2 := db.Select(&episodes, "SELECT * FROM Episodes")
+	panic("selectx episodes failed", err2)
+
+	guests := []Guest{}
+	errGuests := db.Select(&guests, "SELECT * FROM Guests")
+	panic("selectx guests failed", errGuests)
+
+	episodeGuests := []EpisodeGuest{}
+	errepisodeGuests := db.Select(&episodeGuests, "SELECT * FROM EpisodesGuests")
+	panic("selectx guests failed", errepisodeGuests)
+
+	defer db.Close()
+
 	if *debug {
 		fmt.Printf(" connString:%s\n", connString)
 	}
 
-	conn, err := sql.Open("mssql", connString)
-	panic("Open connection failed:", err)
-	defer conn.Close()
+	for _, thisEpisode := range episodes {
 
-	stmt, err := conn.Prepare("select * from episodes")
-	panic("Prepare failed:", err)
-	defer stmt.Close()
+		numberValue, _ := thisEpisode.Number.Value()
+		var f, err = os.Create(fmt.Sprintf("%d.md", numberValue))
 
-	rows, err := stmt.Query()
-	panic("Query failed:", err)
-	defer rows.Close()
-
-	for rows.Next() {
-
-		data := map[string]interface{}{
-			"Id":                nil,
-			"Number":            nil,
-			"Title":             nil,
-			"Description":       nil,
-			"DateRecorded":      nil,
-			"AudioFilePath":     nil,
-			"AudioFileLength":   nil,
-			"NumberOfDownloads": nil,
-			"ZippedFilePath":    nil,
-		}
-
-		var myid int
-		var number sql.NullInt64
-		var title sql.NullString
-		var description sql.NullString
-		var dateRecorded sql.NullString
-		var audioFilePath sql.NullString
-		var audiofilelength sql.NullInt64
-		var numberofdownloads sql.NullInt64
-		var zipped sql.NullString
-		err = rows.Scan(&myid, &number, &title, &description, &dateRecorded, &audioFilePath, &audiofilelength, &numberofdownloads, &zipped)
-		if err != nil {
-			log.Fatal("Scan failed:", err.Error())
-		}
-
-		data["id"] = myid
-		data["Title"], _ = title.Value()
-		data["Number"], _ = number.Value()
-		data["Description"], _ = description.Value()
-		data["DateRecorded"], _ = dateRecorded.Value()
-		data["AudioFilePath"], _ = audioFilePath.Value()
-		data["AudioFileLength"], _ = audiofilelength.Value()
-		data["NumberOfDownloads"], _ = numberofdownloads.Value()
-		data["ZippedFilePath"], _ = zipped.Value()
-
-		var f, err = os.Create(fmt.Sprintf("%d.md", data["Number"]))
 		panic("couldn't create the md file", err)
 		defer f.Close()
 
 		t := template.Must(template.New("episode").Parse(episodeTemplate))
 		buf := &bytes.Buffer{}
-		executeOrPanic(t.Execute, buf, data, "Error executing the template")
+		executeOrPanic(t.Execute, buf, thisEpisode, "Error executing the template")
 
 		fmt.Print(buf)
 		f.WriteString(buf.String())
@@ -121,4 +94,28 @@ func executeOrPanic(fn func(io.Writer, interface{}) error, arg1 io.Writer, arg2 
 	if err != nil {
 		log.Fatal(message, err.Error())
 	}
+}
+
+type Episode struct {
+	ID                sql.NullInt64  `db:"Id"`
+	Number            sql.NullInt64  `db:"Number"`
+	Title             sql.NullString `db:"Title"`
+	Description       sql.NullString `db:"Description"`
+	DateRecorded      sql.NullString `db:"DateRecorded"`
+	AudioFileLength   sql.NullInt64  `db:"AudioFileLength"`
+	AudioFilePath     sql.NullString `db:"AudioFilePath"`
+	ZippedFilePath    sql.NullString `db:"ZippedFilePath"`
+	NumberOfDownloads sql.NullInt64  `db:"NumberOfDownloads"`
+}
+
+type Guest struct {
+	ID          sql.NullInt64  `db:"Id"`
+	FullName    sql.NullString `db:"FullName"`
+	Description sql.NullString `db:"Description"`
+	ImagePath   sql.NullString `db:"ImagePath"`
+}
+
+type EpisodeGuest struct {
+	EpisodeID sql.NullInt64 `db:"EpisodeId"`
+	GuestID   sql.NullInt64 `db:"GuestId"`
 }
