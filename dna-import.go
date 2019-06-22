@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -58,32 +59,62 @@ func main() {
 	funcMap := template.FuncMap{
 		"valueOf": valueOf,
 	}
-	t := template.Must(template.New("episode").Funcs(funcMap).Parse(episodeTemplate))
+	episodeTemplateInstance := template.Must(template.New("episode").Funcs(funcMap).Parse(episodeTemplate))
+	guestTemplateInstance := template.Must(template.New("guest").Funcs(funcMap).Parse(guestTemplate))
 
 	for _, thisEpisode := range episodes {
 
 		numberValue, _ := thisEpisode.Number.Value()
 		var f, err = os.Create(fmt.Sprintf("%d.md", numberValue))
-
 		panic("couldn't create the md file", err)
 		defer f.Close()
 
 		buf := &bytes.Buffer{}
-		executeOrPanic(t.Execute, buf, thisEpisode, "Error executing the template")
+		executeOrPanic(episodeTemplateInstance.Execute, buf, thisEpisode, "Error executing the template")
 
 		fmt.Print(buf)
 		f.WriteString(buf.String())
 	}
 
+	for _, thisGuest := range guests {
+		guestImagePath, _ := thisGuest.ImagePath.Value()
+		guestImagePathTemp := strings.ReplaceAll(guestImagePath.(string), "\\", "/")
+		guestImagePathTemp = strings.ToLower(guestImagePathTemp)
+		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, "images/guests/", "")
+		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".jpg", "")
+		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".gif", "")
+		thisGuest.EnglishName = guestImagePathTemp
+		fmt.Println(thisGuest.EnglishName)
+
+		//create the file guest
+		var f, err = os.Create(fmt.Sprintf("%s.md", thisGuest.EnglishName))
+		panic("couldn't create the guest md file", err)
+		defer f.Close()
+
+		buf := &bytes.Buffer{}
+		executeOrPanic(guestTemplateInstance.Execute, buf, thisGuest, "Error executing the Guest template")
+		f.WriteString(buf.String())
+
+		fmt.Println(buf)
+
+	}
+
 }
 
 const episodeTemplate = `+++
-title = {{ valueOf .Title }}
-audio_file = {{ valueOf .AudioFilePath }}
+title = "{{ valueOf .Title }}"
+audio_file = "{{ valueOf .AudioFilePath }}"
 date = {{ valueOf .DateRecorded }}
 audio_length = {{ valueOf .AudioFileLength }}
 guests = xxxxx
 number = {{valueOf .Number}}
++++
+{{ valueOf .Description }}
+`
+
+const guestTemplate = `+++
+Title = "{{ valueOf .FullName }}@
+image = "{{ .EnglishName }}.jpg"
 +++
 {{ valueOf .Description }}
 `
@@ -118,6 +149,7 @@ type Guest struct {
 	FullName    sql.NullString `db:"FullName"`
 	Description sql.NullString `db:"Description"`
 	ImagePath   sql.NullString `db:"ImagePath"`
+	EnglishName string
 }
 
 type EpisodeGuest struct {
