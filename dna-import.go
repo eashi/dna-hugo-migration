@@ -62,29 +62,14 @@ func main() {
 	episodeTemplateInstance := template.Must(template.New("episode").Funcs(funcMap).Parse(episodeTemplate))
 	guestTemplateInstance := template.Must(template.New("guest").Funcs(funcMap).Parse(guestTemplate))
 
-	for _, thisEpisode := range episodes {
-
-		numberValue, _ := thisEpisode.Number.Value()
-		var f, err = os.Create(fmt.Sprintf("%d.md", numberValue))
-		panic("couldn't create the md file", err)
-		defer f.Close()
-
-		buf := &bytes.Buffer{}
-		executeOrPanic(episodeTemplateInstance.Execute, buf, thisEpisode, "Error executing the template")
-
-		fmt.Print(buf)
-		f.WriteString(buf.String())
-	}
-
-	for _, thisGuest := range guests {
+	for index, thisGuest := range guests {
 		guestImagePath, _ := thisGuest.ImagePath.Value()
 		guestImagePathTemp := strings.ReplaceAll(guestImagePath.(string), "\\", "/")
 		guestImagePathTemp = strings.ToLower(guestImagePathTemp)
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, "images/guests/", "")
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".jpg", "")
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".gif", "")
-		thisGuest.EnglishName = guestImagePathTemp
-		fmt.Println(thisGuest.EnglishName)
+		guests[index].EnglishName = guestImagePathTemp
 
 		//create the file guest
 		var f, err = os.Create(fmt.Sprintf("%s.md", thisGuest.EnglishName))
@@ -95,8 +80,42 @@ func main() {
 		executeOrPanic(guestTemplateInstance.Execute, buf, thisGuest, "Error executing the Guest template")
 		f.WriteString(buf.String())
 
-		fmt.Println(buf)
+		// fmt.Println(buf)
 
+	}
+
+	for _, thisEpisode := range episodes {
+
+		// guestsIds := make([]string, 10)
+		guestsIds := []string{}
+
+		for _, episodeguest := range episodeGuests {
+			if episodeguest.EpisodeID == thisEpisode.ID {
+				for _, tempGuest := range guests {
+					if tempGuest.ID == episodeguest.GuestID {
+						guestsIds = append(guestsIds, tempGuest.EnglishName)
+						fmt.Printf("succeeded: %s\n", tempGuest.EnglishName)
+					}
+				}
+			}
+		}
+		thisEpisode.Guests = guestsIds
+
+		for _, tempEmad := range thisEpisode.Guests {
+			fmt.Println(tempEmad)
+		}
+		fmt.Println("----")
+
+		numberValue, _ := thisEpisode.Number.Value()
+		var f, err3 = os.Create(fmt.Sprintf("%d.md", numberValue))
+		panic("couldn't create the md file", err3)
+		defer f.Close()
+
+		buf := &bytes.Buffer{}
+		executeOrPanic(episodeTemplateInstance.Execute, buf, thisEpisode, "Error executing the template")
+
+		// fmt.Print(buf)
+		f.WriteString(buf.String())
 	}
 
 }
@@ -113,7 +132,7 @@ number = {{valueOf .Number}}
 `
 
 const guestTemplate = `+++
-Title = "{{ valueOf .FullName }}@
+Title = "{{ valueOf .FullName }}
 image = "{{ .EnglishName }}.jpg"
 +++
 {{ valueOf .Description }}
@@ -142,6 +161,7 @@ type Episode struct {
 	AudioFilePath     sql.NullString `db:"AudioFilePath"`
 	ZippedFilePath    sql.NullString `db:"ZippedFilePath"`
 	NumberOfDownloads sql.NullInt64  `db:"NumberOfDownloads"`
+	Guests            []string
 }
 
 type Guest struct {
