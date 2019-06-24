@@ -62,7 +62,9 @@ func main() {
 	episodeTemplateInstance := template.Must(template.New("episode").Funcs(funcMap).Parse(episodeTemplate))
 	guestTemplateInstance := template.Must(template.New("guest").Funcs(funcMap).Parse(guestTemplate))
 
-	for index, thisGuest := range guests {
+	for index, _ := range guests {
+
+		var thisGuest = &guests[index]
 		guestImagePath, _ := thisGuest.ImagePath.Value()
 		guestImagePathTemp := strings.ReplaceAll(guestImagePath.(string), "\\", "/")
 		guestImagePathTemp = strings.ToLower(guestImagePathTemp)
@@ -71,8 +73,12 @@ func main() {
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".gif", "")
 		guests[index].EnglishName = guestImagePathTemp
 
+		fmt.Println(&thisGuest)
+		fmt.Println(&guests[index])
+		// fmt.Println(thisGuest.EnglishName)
+
 		//create the file guest
-		var f, err = os.Create(fmt.Sprintf("%s.md", thisGuest.EnglishName))
+		var f, err = os.Create(fmt.Sprintf("%s.md", (*thisGuest).EnglishName))
 		panic("couldn't create the guest md file", err)
 		defer f.Close()
 
@@ -84,37 +90,34 @@ func main() {
 
 	}
 
-	for _, thisEpisode := range episodes {
+	for index, _ := range episodes {
 
 		// guestsIds := make([]string, 10)
 		guestsIds := []string{}
+		tempEpisode := episodes[index]
+		audioFilePath, _ := tempEpisode.AudioFilePath.Value()
+		audioFilePath = strings.ReplaceAll(audioFilePath.(string), "\\", "/")
+		tempEpisode.AudioFilePath = sql.NullString{strings.ReplaceAll(audioFilePath.(string), "audio/", ""), true}
 
 		for _, episodeguest := range episodeGuests {
-			if episodeguest.EpisodeID == thisEpisode.ID {
+			if episodeguest.EpisodeID == tempEpisode.ID {
 				for _, tempGuest := range guests {
 					if tempGuest.ID == episodeguest.GuestID {
-						guestsIds = append(guestsIds, tempGuest.EnglishName)
-						fmt.Printf("succeeded: %s\n", tempGuest.EnglishName)
+						guestsIds = append(guestsIds, fmt.Sprintf("\"%s\"", tempGuest.EnglishName))
 					}
 				}
 			}
 		}
-		thisEpisode.Guests = guestsIds
 
-		for _, tempEmad := range thisEpisode.Guests {
-			fmt.Println(tempEmad)
-		}
-		fmt.Println("----")
+		tempEpisode.Guests = strings.Join(guestsIds, ",")
 
-		numberValue, _ := thisEpisode.Number.Value()
+		numberValue, _ := tempEpisode.Number.Value()
 		var f, err3 = os.Create(fmt.Sprintf("%d.md", numberValue))
 		panic("couldn't create the md file", err3)
 		defer f.Close()
 
 		buf := &bytes.Buffer{}
-		executeOrPanic(episodeTemplateInstance.Execute, buf, thisEpisode, "Error executing the template")
-
-		// fmt.Print(buf)
+		executeOrPanic(episodeTemplateInstance.Execute, buf, tempEpisode, "Error executing the template")
 		f.WriteString(buf.String())
 	}
 
@@ -125,14 +128,14 @@ title = "{{ valueOf .Title }}"
 audio_file = "{{ valueOf .AudioFilePath }}"
 date = {{ valueOf .DateRecorded }}
 audio_length = {{ valueOf .AudioFileLength }}
-guests = xxxxx
+guests = [{{ .Guests }}]
 number = {{valueOf .Number}}
 +++
 {{ valueOf .Description }}
 `
 
 const guestTemplate = `+++
-Title = "{{ valueOf .FullName }}
+Title = "{{ valueOf .FullName }}"
 image = "{{ .EnglishName }}.jpg"
 +++
 {{ valueOf .Description }}
@@ -161,7 +164,7 @@ type Episode struct {
 	AudioFilePath     sql.NullString `db:"AudioFilePath"`
 	ZippedFilePath    sql.NullString `db:"ZippedFilePath"`
 	NumberOfDownloads sql.NullInt64  `db:"NumberOfDownloads"`
-	Guests            []string
+	Guests            string
 }
 
 type Guest struct {
