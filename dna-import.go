@@ -73,10 +73,6 @@ func main() {
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".gif", "")
 		guests[index].EnglishName = guestImagePathTemp
 
-		fmt.Println(&thisGuest)
-		fmt.Println(&guests[index])
-		// fmt.Println(thisGuest.EnglishName)
-
 		//create the file guest
 		var f, err = os.Create(fmt.Sprintf("%s.md", (*thisGuest).EnglishName))
 		panic("couldn't create the guest md file", err)
