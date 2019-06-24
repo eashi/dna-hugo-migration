@@ -88,15 +88,20 @@ func main() {
 
 	for index, _ := range episodes {
 
+		tempEpisode := &episodes[index]
+
 		// guestsIds := make([]string, 10)
 		guestsIds := []string{}
-		tempEpisode := episodes[index]
-		audioFilePath, _ := tempEpisode.AudioFilePath.Value()
+		audioFilePath, _ := (*tempEpisode).AudioFilePath.Value()
 		audioFilePath = strings.ReplaceAll(audioFilePath.(string), "\\", "/")
-		tempEpisode.AudioFilePath = sql.NullString{strings.ReplaceAll(audioFilePath.(string), "audio/", ""), true}
+
+		quotesEscapedTitle, _ := (*tempEpisode).Title.Value()
+		(*tempEpisode).Title = sql.NullString{String: strings.ReplaceAll(quotesEscapedTitle.(string), "\"", "\\\""), Valid: true}
+
+		(*tempEpisode).AudioFilePath = sql.NullString{String: strings.ReplaceAll(audioFilePath.(string), "audio/", ""), Valid: true}
 
 		for _, episodeguest := range episodeGuests {
-			if episodeguest.EpisodeID == tempEpisode.ID {
+			if episodeguest.EpisodeID == (*tempEpisode).ID {
 				for _, tempGuest := range guests {
 					if tempGuest.ID == episodeguest.GuestID {
 						guestsIds = append(guestsIds, fmt.Sprintf("\"%s\"", tempGuest.EnglishName))
@@ -105,15 +110,15 @@ func main() {
 			}
 		}
 
-		tempEpisode.Guests = strings.Join(guestsIds, ",")
+		(*tempEpisode).Guests = strings.Join(guestsIds, ",")
 
-		numberValue, _ := tempEpisode.Number.Value()
+		numberValue, _ := (*tempEpisode).Number.Value()
 		var f, err3 = os.Create(fmt.Sprintf("%d.md", numberValue))
 		panic("couldn't create the md file", err3)
 		defer f.Close()
 
 		buf := &bytes.Buffer{}
-		executeOrPanic(episodeTemplateInstance.Execute, buf, tempEpisode, "Error executing the template")
+		executeOrPanic(episodeTemplateInstance.Execute, buf, *tempEpisode, "Error executing the template")
 		f.WriteString(buf.String())
 	}
 
