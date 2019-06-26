@@ -128,7 +128,7 @@ const episodeTemplate = `+++
 title = "{{ valueOf .Title }}"
 audio_file = "{{ valueOf .AudioFilePath }}"
 date = {{ valueOf .DateRecorded }}
-audio_length = {{ valueOf .AudioFileLength }}
+audio_length = "{{ valueOf .AudioFileLength }}"
 guests = [{{ .Guests }}]
 number = {{valueOf .Number}}
 +++
@@ -181,8 +181,14 @@ type EpisodeGuest struct {
 	GuestID   sql.NullInt64 `db:"GuestId"`
 }
 
-func valueOf(arg sqlDbType) (driver.Value, error) {
-	return arg.Value()
+func valueOf(arg sqlDbType) driver.Value {
+	value, _ := arg.Value()
+	if value == nil {
+		return ""
+	}
+
+	return value
+
 }
 
 type sqlDbType interface {
