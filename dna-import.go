@@ -71,6 +71,7 @@ func main() {
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, "images/guests/", "")
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".jpg", "")
 		guestImagePathTemp = strings.ReplaceAll(guestImagePathTemp, ".gif", "")
+
 		guests[index].EnglishName = guestImagePathTemp
 
 		//create the file guest
@@ -137,7 +138,7 @@ number = {{valueOf .Number}}
 
 const guestTemplate = `+++
 Title = "{{ valueOf .FullName }}"
-image = "{{ .EnglishName }}.jpg"
+image = "{{ .EnglishName | ToLower }}.jpg"
 +++
 {{ valueOf .Description }}
 `
@@ -194,3 +195,7 @@ func valueOf(arg sqlDbType) driver.Value {
 type sqlDbType interface {
 	Value() (driver.Value, error)
 }
+
+// func toLower(arg string) string {
+// 	strings.ToLower
+// }
