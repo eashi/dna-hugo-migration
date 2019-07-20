@@ -62,7 +62,7 @@ func main() {
 	episodeTemplateInstance := template.Must(template.New("episode").Funcs(funcMap).Parse(episodeTemplate))
 	guestTemplateInstance := template.Must(template.New("guest").Funcs(funcMap).Parse(guestTemplate))
 
-	for index, _ := range guests {
+	for index := range guests {
 
 		var thisGuest = &guests[index]
 		guestImagePath, _ := thisGuest.ImagePath.Value()
@@ -87,7 +87,7 @@ func main() {
 
 	}
 
-	for index, _ := range episodes {
+	for index := range episodes {
 
 		tempEpisode := &episodes[index]
 
