@@ -196,6 +196,6 @@ type sqlDbType interface {
 	Value() (driver.Value, error)
 }
 
-// func toLower(arg string) string {
-// 	strings.ToLower
-// }
+func toLower(arg string) string {
+	strings.ToLower
+}
