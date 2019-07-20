@@ -101,14 +101,12 @@ func main() {
 
 		(*tempEpisode).AudioFilePath = sql.NullString{String: strings.ReplaceAll(audioFilePath.(string), "audio/", ""), Valid: true}
 
-		for _, episodeguest := range episodeGuests {
-			if episodeguest.EpisodeID == (*tempEpisode).ID {
-				for _, tempGuest := range guests {
-					if tempGuest.ID == episodeguest.GuestID {
-						guestsIds = append(guestsIds, fmt.Sprintf("\"%s\"", tempGuest.EnglishName))
-					}
-				}
-			}
+		c := make(chan string)
+		go getAGuest(episodeGuests, guests, (*tempEpisode).ID, c)
+
+		for i := range c {
+			fmt.Println("Reading from channel")
+			guestsIds = append(guestsIds, fmt.Sprintf("\"%s\"", i))
 		}
 
 		(*tempEpisode).Guests = strings.Join(guestsIds, ",")
@@ -123,6 +121,20 @@ func main() {
 		f.WriteString(buf.String())
 	}
 
+}
+
+func getAGuest(episodeGuests []EpisodeGuest, guests []Guest, episodeID sql.NullInt64, c chan string) {
+	for _, episodeguest := range episodeGuests {
+		if episodeguest.EpisodeID == episodeID {
+			for _, tempGuest := range guests {
+				if tempGuest.ID == episodeguest.GuestID {
+					fmt.Println("Writing to channel")
+					c <- tempGuest.EnglishName
+				}
+			}
+		}
+	}
+	close(c)
 }
 
 const episodeTemplate = `+++
